@@ -66,7 +66,7 @@ class _Home extends State<Home> {
             Card(
               elevation: 9,
               child: Container(
-                width: screenHeight / 2.5,
+                width: screenHeight / 2,
                 child: Image.asset(currentMusic.imagePath),
               ),
             ),
@@ -80,12 +80,15 @@ class _Home extends State<Home> {
                 actionButton(Icons.fast_forward, 30, MusicActions.forward)
               ],
             ),
-            Row(
+            Container(
+              margin: EdgeInsets.only(left: 20, right: 20),
+              child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 textWithStyle(fromDuration(position), 0.8),
                 textWithStyle(fromDuration(duration), 0.8)
-              ],
+                ],
+              ),
             ),
             Slider(
               value: position.inSeconds.toDouble(),
