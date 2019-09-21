@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:async' as prefix0;
+
 import 'package:flutter/material.dart';
 import 'music.dart';
+import 'package:audioplayer2/audioplayer2.dart';
 
 void main() => runApp(App());
 
@@ -29,12 +33,20 @@ class _Home extends State<Home> {
 
   Music currentMusic;
 
-  double position = 0;
+  Duration position = Duration(seconds: 0);
+  Duration duration = Duration(seconds: 10);
+
+  AudioPlayer audioPlayer;
+  StreamSubscription subPosition;
+  StreamSubscription subState;
+  PlayerState status = PlayerState.stopped;
+  int index = 0;
 
   @override
   void initState() {
     super.initState();
-    currentMusic = musics[0];
+    currentMusic = musics[index];
+    configureAudioPlayer();
   }
 
   @override
@@ -64,26 +76,26 @@ class _Home extends State<Home> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 actionButton(Icons.fast_rewind, 30, MusicActions.rewind),
-                actionButton(Icons.play_arrow, 45, MusicActions.play),
+                actionButton((status == PlayerState.playing) ? Icons.pause : Icons.play_arrow, 45, (status == PlayerState.playing) ? MusicActions.pause : MusicActions.play),
                 actionButton(Icons.fast_forward, 30, MusicActions.forward)
               ],
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
-                textWithStyle('0:0', 0.8),
-                textWithStyle('0:22', 0.8)
+                textWithStyle(fromDuration(position), 0.8),
+                textWithStyle(fromDuration(duration), 0.8)
               ],
             ),
             Slider(
-              value: position,
+              value: position.inSeconds.toDouble(),
               inactiveColor: Colors.teal[300],
               activeColor: Colors.teal[900],
               min: 0,
               max: 30,
               onChanged: (double d) {
                 setState(() {
-                 position = d; 
+                 audioPlayer.seek(d); 
                 });
               },
             )
@@ -115,20 +127,91 @@ class _Home extends State<Home> {
       onPressed: () {
         switch(actions) {
           case MusicActions.play:
-            print('Play');
+            play();
             break;
           case MusicActions.pause:
-            print('Pause');
+            pause();
             break;
           case MusicActions.rewind:
-            print('Rewind');
+            rewind();
             break;
           case MusicActions.forward:
-            print('Forward');
+            forward();
             break;
         }
       },
     );
+  }
+
+  void configureAudioPlayer() {
+    audioPlayer = AudioPlayer();
+    subPosition = audioPlayer.onAudioPositionChanged.listen(
+      (pos) => setState(() => position = pos) 
+    );
+    subState = audioPlayer.onPlayerStateChanged.listen((pState) {
+      if (pState == PlayerState.playing) {
+        setState() {
+          duration = audioPlayer.duration;
+        }
+      } else if(pState == PlayerState.stopped) {
+        setState(() {
+         status = PlayerState.stopped; 
+        });
+      }
+    }, onError: (message) {
+      print('Erreur $message');
+      setState(() {
+       status = PlayerState.stopped;
+       duration = Duration(seconds: 0);
+       position = Duration(seconds: 0); 
+      });
+    });
+  }
+
+  prefix0.Future play() async {
+    await audioPlayer.play(currentMusic.urlSong);
+    setState(() {
+     status = PlayerState.playing; 
+    });
+  }
+
+  prefix0.Future pause() async {
+    await audioPlayer.pause();
+    setState(() {
+     status = PlayerState.paused; 
+    });
+  }
+
+  void forward() {
+    if (index == musics.length - 1) {
+      index = 0;
+    } else {
+      index++;
+    }
+    currentMusic = musics[index];
+    audioPlayer.stop();
+    configureAudioPlayer();
+    play();
+  }
+
+  void rewind() {
+    if (position > Duration(seconds: 3)) {
+      audioPlayer.seek(0);
+    } else {
+      if (index == 0) {
+        index = musics.length - 1;
+      } else {
+        index--;
+      }
+      currentMusic = musics[index];
+      audioPlayer.stop();
+      configureAudioPlayer();
+      play();
+    }
+  }
+
+  String fromDuration(Duration duration) {
+    return duration.toString().split('.').first;
   }
 }
 
@@ -137,4 +220,10 @@ enum MusicActions {
   pause,
   rewind,
   forward
+}
+
+enum PlayerState {
+  playing,
+  stopped,
+  paused
 }
